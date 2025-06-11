@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="theme-color" content="#A5D6A7">
+    <title>Guest Radar</title>
+
+    <!-- PWA & Mobile App Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- iOS "Add to Home Screen" support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Guest Radar">
+    <link rel="apple-touch-icon" href="/images/icon-192.png">
+
+    <!-- Tailwind CSS & Google Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Neumorphism & Animation Styles -->
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #E0E5EC;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #d1d9e6; }
+        ::-webkit-scrollbar-thumb { background: #8BC34A; border-radius: 10px; } 
+        
+        /* Neumorphism Core Classes */
+        .neumorphic-card {
+            background-color: #E0E5EC;
+            border-radius: 20px;
+            box-shadow: 9px 9px 16px #a3b1c6, -9px -9px 16px #ffffff;
+            transition: all 0.2s ease-in-out;
+        }
+        .neumorphic-card-inset {
+            background-color: #E0E5EC;
+            border-radius: 15px;
+            box-shadow: inset 5px 5px 10px #a3b1c6, inset -5px -5px 10px #ffffff;
+        }
+        .neumorphic-button {
+             background-color: #E0E5EC;
+             border-radius: 10px;
+             box-shadow: 5px 5px 10px #a3b1c6, -5px -5px 10px #ffffff;
+             transition: all 0.1s ease-in-out;
+             touch-action: manipulation;
+        }
+        .neumorphic-button:active, .neumorphic-button.active {
+            box-shadow: inset 5px 5px 10px #a3b1c6, inset -5px -5px 10px #ffffff;
+            color: #34A853; 
+        }
+        .neumorphic-logo-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #E0E5EC;
+            border-radius: 20px; 
+            box-shadow: 9px 9px 16px #a3b1c6, -9px -9px 16px #ffffff;
+            padding: 0.75rem 1.5rem; 
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* "Mabuhay" Loading Screen */
+        .mabuhay-loader { display: flex; gap: 0.25rem; font-size: 3rem; font-weight: 700; }
+        .mabuhay-loader span { opacity: 0; transform: translateY(20px); animation: fade-in-up 0.5s ease forwards; position: relative; color: #64748b; }
+        .mabuhay-loader span::before { content: attr(data-text); position: absolute; left: 0; top: 0; width: 0%; overflow: hidden; color: #34A853; animation: color-wipe 2s linear infinite; animation-delay: inherit; }
+        @keyframes fade-in-up { to { opacity: 1; transform: translateY(0); } }
+        @keyframes color-wipe { 0%, 100% { width: 0%; } 50% { width: 100%; } }
+
+                /* Neumorphic Status Tags */
+        .tag-neumorphic {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            box-shadow: 2px 2px 5px #a3b1c6, -2px -2px 5px #ffffff;
+            transition: all 0.1s ease-in-out;
+            line-height: 1.2;
+        }
+                                        /* Final Calibrated Colors */
+        .tag-arrived { background-color: #bafdd1; color: #166534; /* green-200/green-800 - Perfect */ }
+        .tag-mur { background-color: #baecfd; color: #075985; /* sky-200/sky-800 - Perfect */ }
+        .tag-due-out { background-color: #f5edc2; color: #854d0e; /* User-specified Yellow */ }
+        
+        /* Calibrated Border Colors */
+        .border-arrived { border-color: #bafdd1 !important; }
+        .border-mur { border-color: #baecfd !important; }
+        .border-due-out { border-color: #f5edc2 !important; }
+        
+        /* Spinner for login buttons */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+
+        .multi-select-container { position: relative; }
+        .multi-select-options { display: none; position: absolute; background-color: #E0E5EC; border: 1px solid #a3b1c6; border-radius: 0.5rem; max-height: 200px; overflow-y: auto; z-index: 1000; width: 100%; }
+        .multi-select-options.show { display: block; }
+        .multi-select-options label { display: block; padding: 0.75rem 1rem; cursor: pointer; transition: background-color 0.2s; }
+        .multi-select-options label:hover { background-color: #d1d9e6; }
+        .multi-select-options input[type="checkbox"] { margin-right: 0.75rem; }
+        .date-placeholder-style { color: #9ca3af; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+    <div id="app-container" class="max-w-7xl mx-auto min-h-screen">
+        <div id="loading-view" class="flex flex-col items-center justify-center min-h-screen p-4">
+             <div class="mabuhay-loader">
+                <span data-text="M" style="animation-delay: 0.1s;">M</span><span data-text="A" style="animation-delay: 0.2s;">A</span><span data-text="B" style="animation-delay: 0.3s;">B</span><span data-text="U" style="animation-delay: 0.4s;">U</span><span data-text="H" style="animation-delay: 0.5s;">H</span><span data-text="A" style="animation-delay: 0.6s;">A</span><span data-text="Y" style="animation-delay: 0.7s;">Y</span>
+            </div>
+        </div>
+
+        <div id="login-view" class="hidden relative flex-col items-center justify-center min-h-screen p-4">
+            <div class="neumorphic-logo-container mb-8"><img id="logo-flash" src="images/logo.png" alt="View Park Hotel Logo" class="h-16 transition-transform"></div>
+            <h1 class="text-4xl font-bold text-gray-700 mb-2">Guest Radar</h1>
+            <p class="text-[#34A853] mb-8">Admin & Staff Portal</p> 
+            <div class="w-full max-w-sm p-8 neumorphic-card z-10">
+                <h2 class="text-2xl font-bold text-center text-gray-700 mb-6">Access Portal</h2>
+                <div id="login-error" class="text-red-500 text-center mb-4 hidden"></div>
+                <div id="admin-login-area" class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Enter Admin Email" class="w-full px-4 py-3 neumorphic-card-inset focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg text-gray-700" required>
+                    <button id="admin-login-btn" class="w-full py-3 font-bold text-white bg-[#34A853] rounded-lg neumorphic-button transition flex items-center justify-center">
+                        <span class="btn-text">Login as Admin</span>
+                        <svg class="animate-spin h-5 w-5 text-white ml-3 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </button>
+                </div>
+                <div class="my-6 flex items-center"><hr class="flex-grow border-gray-400/50"><span class="mx-4 text-gray-500">OR</span><hr class="flex-grow border-gray-400/50"></div>
+                 <div id="viewer-login-area">
+                    <button id="viewer-login-btn" class="w-full py-3 font-bold text-gray-800 bg-[#8BC34A] rounded-lg neumorphic-button transition flex items-center justify-center">
+                        <span class="btn-text">Login as Staff (View-Only)</span>
+                        <svg class="animate-spin h-5 w-5 text-gray-800 ml-3 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    </button>
+                </div>
+            </div>
+             <p class="text-xs text-gray-500 mt-4 z-10">Admin access requires a pre-configured email.</p>
+        </div>
+
+        <div id="main-view" class="hidden p-4 sm:p-6 lg:p-8">
+            <header class="flex flex-wrap items-center justify-between mb-6 gap-4">
+                <h1 class="text-3xl font-bold text-gray-800">Guest Radar</h1>
+                <div class="flex items-center gap-4"><p class="text-sm">Role: <span id="role-display" class="font-bold text-[#34A853]"></span></p><button id="logout-btn" class="px-4 py-2 text-sm font-bold text-white bg-red-500 rounded-lg neumorphic-button">Logout</button></div>
+            </header>
+            <div class="flex flex-col gap-4 mb-6 p-4 neumorphic-card">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-600 mb-1">Filter by Date</label><input type="date" id="filter-date" class="w-full neumorphic-card-inset px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg text-gray-700"></div>
+                    <div><label class="block text-sm font-medium text-gray-600 mb-1">Views</label><div class="flex gap-2"><button id="filter-in-house" class="flex-1 py-2 px-3 text-sm font-semibold neumorphic-button text-gray-700 filter-btn">In-House</button><button id="filter-arrivals" class="flex-1 py-2 px-3 text-sm font-semibold neumorphic-button text-gray-700 filter-btn">Arrivals</button><button id="filter-mur" class="flex-1 py-2 px-3 text-sm font-semibold neumorphic-button text-gray-700 filter-btn">MUR</button><button id="filter-due-out" class="flex-1 py-2 px-3 text-sm font-semibold neumorphic-button text-gray-700 filter-btn">Due Out</button></div></div>
+                    <div><label for="search-bar" class="block text-sm font-medium text-gray-600 mb-1">Search</label><input type="text" id="search-bar" placeholder="Search by name or room..." class="w-full neumorphic-card-inset px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg text-gray-700"></div>
+                </div>
+                <div id="admin-controls" class="hidden pt-2"><button id="add-new-btn" class="w-full py-3 font-bold text-gray-800 bg-[#8BC34A] neumorphic-button flex items-center justify-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>Add New Guest</button></div>
+            </div>
+            <div id="list-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            <p id="no-results" class="text-center text-gray-500 mt-12 hidden">No guests match the current view.</p>
+        </div>
+    </div>
+    <div id="form-view" class="hidden fixed inset-0 bg-white/30 backdrop-blur-sm z-40 overflow-y-auto p-4 sm:p-6"><div class="max-w-2xl mx-auto my-8"><form id="guest-form" class="p-8 rounded-2xl space-y-6 neumorphic-card"><h2 id="form-title" class="text-3xl font-bold text-gray-800 mb-4">Add New Guest</h2><input type="hidden" id="form-guest-id"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" data-behavior="date-input" onfocus="(this.type='date')" onblur="(this.type='text')" placeholder="Arrival Date" id="ArrivalDate" class="date-placeholder-style w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg" required><input type="text" data-behavior="date-input" onfocus="(this.type='date')" onblur="(this.type='text')" placeholder="Departure Date" id="DepartureDate" class="date-placeholder-style w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg" required></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" id="GuestName" placeholder="Guest Name" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg" required><select id="Patronage" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg appearance-none"><option>New</option><option>Loyal</option><option>Staff</option></select></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="multi-select-container"><div id="multi-select-considerations-button" class="w-full neumorphic-card-inset rounded-lg px-3 py-3 cursor-pointer flex items-center justify-between"><span id="multi-select-considerations-text" class="text-gray-500">Considerations...</span></div><div id="multi-select-considerations-options" class="multi-select-options"></div></div><input type="number" id="NumberOfPax" placeholder="Number of Pax" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg" required min="1"></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><input type="text" id="RoomID" placeholder="Room ID" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg"><input type="text" id="PurposeOfStay" placeholder="Purpose of Stay" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg"></div><div class="multi-select-container"><div id="multi-select-depts-button" class="w-full neumorphic-card-inset rounded-lg px-3 py-3 cursor-pointer flex items-center justify-between"><span id="multi-select-depts-text" class="text-gray-500">Key Departments...</span></div><div id="multi-select-depts-options" class="multi-select-options"></div></div><textarea id="Highlights" placeholder="Highlights / Notes" rows="3" class="w-full neumorphic-card-inset px-3 py-3 focus:outline-none focus:ring-2 focus:ring-[#34A853] rounded-lg"></textarea><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-form-btn" class="px-6 py-2 font-semibold neumorphic-button">Cancel</button><button type="submit" class="px-6 py-2 font-bold text-gray-800 bg-[#8BC34A] rounded-lg neumorphic-button">Save Record</button></div></form></div></div>
+    <div id="delete-modal" class="hidden fixed inset-0 bg-white/30 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div class="p-8 max-w-sm w-full neumorphic-card"><h3 class="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h3><p class="text-gray-600 mb-6">Are you sure you want to permanently delete this guest record?</p><div class="flex justify-end gap-4"><button id="cancel-delete-btn" class="px-6 py-2 font-semibold neumorphic-button">Cancel</button><button id="confirm-delete-btn" class="px-6 py-2 font-bold text-white bg-red-500 rounded-lg neumorphic-button">Delete</button></div></div></div>
+    <div id="install-container" class="fixed bottom-4 right-4 hidden"><button id="install-button" class="bg-[#34A853] text-white font-bold py-3 px-5 shadow-lg flex items-center gap-2 neumorphic-button"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Install App</button></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let app, db, auth; let isAdmin = false; let currentData = []; let unsubscribe = null; let recordToDelete = null;
+        let currentFilter = 'in-house';
+        let isInitialLoad = true;
+        const ADMIN_EMAIL = "admin@hotel.com";
+        const firebaseConfig = { apiKey: "AIzaSyDLaV5NLOhiLaCUl4PM_mQmQ5S-o_Y1cBI", authDomain: "mont-6dbbb.firebaseapp.com", projectId: "mont-6dbbb", storageBucket: "mont-6dbbb.firebasestorage.app", messagingSenderId: "1051557256949", appId: "1:1051557256949:web:1d5ce7f32bf41546f12fbc", measurementId: "G-C08JCXMZ4J" };
+
+        const loadingView = document.getElementById('loading-view');
+        const loginView = document.getElementById('login-view');
+        const mainView = document.getElementById('main-view');
+        const formView = document.getElementById('form-view');
+        const deleteModal = document.getElementById('delete-modal');
+        const listView = document.getElementById('list-view');
+        const noResults = document.getElementById('no-results');
+
+        const getLocalDateString = (date) => { if (!date) return ''; const tzoffset = (new Date()).getTimezoneOffset() * 60000; return new Date(date - tzoffset).toISOString().split('T')[0]; }
+        const formatTimestamp = (isoString) => { if (!isoString) return ''; const date = new Date(isoString); const datePart = date.toLocaleDateString([], { month: 'short', day: 'numeric' }); const timePart = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); return `${datePart}, ${timePart}`; }
+        const setupPWA = () => {
+    let deferredPrompt;
+    
+    // This part is for the custom install button on Android
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault(); // Prevent the default mini-infobar
+        deferredPrompt = e;
+        document.getElementById('install-container').classList.remove('hidden');
+    });
+
+    document.getElementById('install-button').addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        document.getElementById('install-container').classList.add('hidden');
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+    });
+};
+        const considerationOptions = ['VVIP', 'VIP', 'PWD', 'Senior Citizen', 'Pregnant']; 
+        const departmentOptions = ['Security', 'FO', 'Housekeeping', 'Dining & Kitchen', 'Maintenance', 'IT Support'];
+        const setupMultiSelect = (buttonId, textId, optionsId, optionsArray, placeholder, isDeptNotes = false) => { const button = document.getElementById(buttonId); const textEl = document.getElementById(textId); const optionsEl = document.getElementById(optionsId); optionsEl.innerHTML = optionsArray.map(opt => { const noteInput = isDeptNotes ? `<input type="text" id="note-${opt.replace(/\s+/g, '-')}" data-dept="${opt}" class="hidden mt-2 w-full neumorphic-card-inset text-sm px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#34A853] rounded-md" placeholder="Note for ${opt}...">` : ''; return `<label><div class="flex items-center"><input type="checkbox" value="${opt}" class="form-checkbox h-5 w-5 text-[#34A853] rounded focus:ring-[#34A853]"><span>${opt}</span></div>${noteInput}</label>`; }).join(''); const updateText = () => { const selected = Array.from(optionsEl.querySelectorAll('input[type="checkbox"]:checked')).map(el => el.value); if (selected.length === 0) { textEl.textContent = placeholder; textEl.classList.add('text-gray-500'); } else if (selected.length <= 2) { textEl.textContent = selected.join(', '); textEl.classList.remove('text-gray-500'); } else { textEl.textContent = `${selected.length} options selected`; textEl.classList.remove('text-gray-500'); } }; optionsEl.addEventListener('change', (e) => { updateText(); if (isDeptNotes && e.target.type === 'checkbox') { const noteInput = document.getElementById(`note-${e.target.value.replace(/\s+/g, '-')}`); if (noteInput) { noteInput.classList.toggle('hidden', !e.target.checked); if (!e.target.checked) noteInput.value = ''; } } }); button.addEventListener('click', () => optionsEl.classList.toggle('show')); document.addEventListener('click', (e) => { if (!button.contains(e.target) && !optionsEl.contains(e.target)) { optionsEl.classList.remove('show'); } }); return updateText; };
+        const updateConsiderationsText = setupMultiSelect('multi-select-considerations-button', 'multi-select-considerations-text', 'multi-select-considerations-options', considerationOptions, 'Considerations...');
+        const updateDeptsText = setupMultiSelect('multi-select-depts-button', 'multi-select-depts-text', 'multi-select-depts-options', departmentOptions, 'Key Departments...', true);
+        
+        const render = () => {
+            const filterDateVal = document.getElementById('filter-date').value; const searchTerm = document.getElementById('search-bar').value.toLowerCase().trim(); let filteredData = [];
+            switch(currentFilter) {
+                case 'arrivals': filteredData = currentData.filter(guest => guest.ArrivalDate === filterDateVal && guest.status === 'Expected'); break;
+                case 'mur': filteredData = currentData.filter(guest => guest.status === 'MUR' && filterDateVal >= guest.ArrivalDate && filterDateVal < guest.DepartureDate); break;
+                case 'due-out': filteredData = currentData.filter(guest => guest.DepartureDate === filterDateVal && (guest.status === 'CheckedIn' || guest.status === 'MUR')); break;
+                case 'in-house': filteredData = currentData.filter(guest => (guest.status === 'CheckedIn' || guest.status === 'MUR') && filterDateVal >= guest.ArrivalDate && filterDateVal <= guest.DepartureDate); break;
+            }
+            if (searchTerm) { filteredData = filteredData.filter(guest => guest.GuestName.toLowerCase().includes(searchTerm) || (guest.RoomID && guest.RoomID.toLowerCase().includes(searchTerm))); }
+            filteredData.sort((a, b) => (a.GuestName || '').localeCompare(b.GuestName || ''));
+            listView.innerHTML = '';
+            if (filteredData.length > 0) { noResults.classList.add('hidden'); filteredData.forEach(guest => listView.appendChild(createGuestCard(guest))); }
+            else { noResults.classList.remove('hidden'); }
+        };
+        
+        const createGuestCard = (guest) => {
+            const card = document.createElement('div'); const status = guest.status || 'Expected'; const filterDateVal = document.getElementById('filter-date').value; const isDueOut = (status === 'CheckedIn' || status === 'MUR') && guest.DepartureDate === filterDateVal; let cardClasses = 'neumorphic-card p-5 flex flex-col gap-4 border-2 ';
+            if (isDueOut) { cardClasses += 'border-due-out'; } else { switch(status) { case 'CheckedIn': cardClasses += 'border-arrived'; break; case 'MUR': cardClasses += 'border-mur'; break; default: cardClasses += 'border-transparent'; break; } }
+            card.className = cardClasses;
+            let actionControlsHtml = '<div class="flex items-center gap-2 flex-shrink-0">';
+            if (isDueOut) { actionControlsHtml += `<span class="tag-neumorphic tag-due-out">DUE OUT</span>`; }
+            else { switch(status) { case 'CheckedIn': actionControlsHtml += `<span class="tag-neumorphic tag-arrived">ARRIVED</span>`; break; case 'MUR': actionControlsHtml += `<span class="tag-neumorphic tag-mur">MAKE UP ROOM</span>`; break; default: break; } }
+            if (isAdmin) { actionControlsHtml += `<button data-id="${guest.id}" class="edit-btn p-2 rounded-full neumorphic-button text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg></button><button data-id="${guest.id}" class="delete-btn p-2 rounded-full neumorphic-button text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg></button>`; }
+            actionControlsHtml += '</div>';
+            let bottomActionsHtml = '';
+            if (isAdmin) {
+                switch(status) {
+                    case 'Expected': bottomActionsHtml = `<button data-id="${guest.id}" class="check-in-btn mt-4 w-full py-2 font-bold text-white bg-green-500 rounded-lg neumorphic-button">Check In</button>`; break;
+                    case 'CheckedIn':
+                        let murButton = '';
+                        if (guest.ArrivalDate && guest.DepartureDate) { const arrival = new Date(guest.ArrivalDate); const departure = new Date(guest.DepartureDate); const nights = (departure.getTime() - arrival.getTime()) / (1000 * 3600 * 24); if (nights >= 1 && guest.DepartureDate !== guest.ArrivalDate) { murButton = `<button data-id="${guest.id}" class="mur-btn w-full py-2 font-semibold text-white bg-orange-500 rounded-lg neumorphic-button">Set MUR</button>`; } }
+                        const checkoutButton = `<button data-id="${guest.id}" class="checkout-btn w-full py-2 font-semibold text-white bg-slate-600 rounded-lg neumorphic-button">Check Out</button>`;
+                        bottomActionsHtml = `<div class="mt-4 grid ${murButton ? 'grid-cols-2' : 'grid-cols-1'} gap-2">${murButton}${checkoutButton}</div>`; break;
+                    case 'MUR': bottomActionsHtml = `<div class="mt-4 grid grid-cols-1 gap-2"><button data-id="${guest.id}" class="checkout-btn w-full py-2 font-semibold text-white bg-slate-600 rounded-lg neumorphic-button">Check Out</button></div>`; break;
+                }
+            }
+            const considerationTags = (guest.Considerations || []).map(tag => { const colors = { VVIP: 'bg-red-500', VIP: 'bg-fuchsia-500', PWD: 'bg-green-500', 'Senior Citizen': 'bg-yellow-500', Pregnant: 'bg-pink-500' }; return `<div class="text-xs font-bold ${colors[tag] || 'bg-gray-500'} text-white px-2 py-1 rounded-full">${tag.toUpperCase()}</div>`; }).join('');
+            let patronageTag = '';
+            switch (guest.Patronage) { case 'Loyal': patronageTag = `<div class="text-xs font-bold bg-[#34A853] text-white px-2 py-1 rounded-full">LOYAL</div>`; break; case 'Staff': patronageTag = `<div class="text-xs font-bold bg-teal-500 text-white px-2 py-1 rounded-full">STAFF</div>`; break; default: patronageTag = `<div class="text-xs font-bold bg-gray-300 text-gray-600 px-2 py-1 rounded-full">NEW</div>`; break; }
+            const departmentColors = { 'Security': 'text-red-500', 'FO': 'text-teal-600', 'Housekeeping': 'text-yellow-600', 'Dining & Kitchen': 'text-orange-500', 'Maintenance': 'text-indigo-500', 'IT Support': 'text-lime-600' };
+            const deptNotesRows = departmentOptions.map(dept => { if (guest.departmentNotes && guest.departmentNotes[dept]) { const note = guest.departmentNotes[dept]; const colorClass = departmentColors[dept] || 'text-gray-600'; return `<div class="grid grid-cols-[max-content,1fr] gap-x-2 items-start"><div class="font-bold ${colorClass}">• ${dept}:</div><div>${note}</div></div>`; } return null; }).filter(Boolean).join('');
+            const deptNotesHtml = `<div class="neumorphic-card-inset p-3 min-h-[40px] flex flex-col justify-center">${deptNotesRows ? `<div class="text-sm space-y-1 text-gray-700">${deptNotesRows}</div>` : `<span class="text-xs text-gray-500 text-center">No Department Notes</span>`}</div>`;
+            const pax = parseInt(guest.NumberOfPax, 10) || 1;
+            const paxIconHtml = pax >= 2 ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#34A853]" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" /></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#34A853]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>`;
+            card.innerHTML = `<div class="flex items-start justify-between gap-4"><h3 class="text-xl font-bold text-gray-700 break-words">${guest.GuestName}</h3>${actionControlsHtml}</div><div class="flex items-center gap-4 text-sm text-gray-500"><span class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#34A853]" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>${guest.RoomID || 'N/A'}</span><span class="flex items-center gap-1.5">${paxIconHtml}${guest.NumberOfPax} Pax</span></div><div class="flex flex-col gap-3"><div class="flex flex-wrap items-center gap-2">${patronageTag}${considerationTags}</div>${deptNotesHtml}</div>${guest.Highlights ? `<div class="neumorphic-card-inset p-3 mt-1"><p class="text-sm text-gray-600 italic">${guest.Highlights}</p></div>` : ''}${bottomActionsHtml}<div class="text-xs text-gray-500 pt-3 border-t border-gray-300/70 mt-auto">Stay: <span class="font-semibold">${guest.ArrivalDate}</span> to <span class="font-semibold">${guest.DepartureDate}</span>${guest.checkInTimestamp ? `<br><span class="font-bold text-green-700">Arrived: ${formatTimestamp(guest.checkInTimestamp)}</span>` : ''}</div>`;
+            return card;
+        };
+        
+        const updateUIForRole = (isAuthed, isAdminRole) => {
+            isAdmin = isAdminRole;
+            if (isAuthed) {
+                loadingView.style.display = 'none'; loginView.style.display = 'none'; mainView.style.display = 'block';
+                document.getElementById('role-display').textContent = isAdmin ? 'Admin' : 'Viewer';
+                document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+                document.getElementById('filter-in-house').click();
+            } else {
+                if (isInitialLoad) { setTimeout(() => { loadingView.style.display = 'none'; loginView.style.display = 'flex'; }, 2000); isInitialLoad = false; }
+                else { loadingView.style.display = 'none'; loginView.style.display = 'flex'; mainView.style.display = 'none'; formView.style.display = 'none'; }
+            }
+        };
+        
+        const showForm = (guest = null) => {
+            document.getElementById('guest-form').reset(); document.querySelectorAll('#multi-select-depts-options input[type="text"]').forEach(input => { input.value = ''; input.classList.add('hidden'); }); updateConsiderationsText(); updateDeptsText();
+            if (guest) { document.getElementById('form-title').textContent = 'Edit Guest Record'; Object.keys(guest).forEach(key => { const el = document.getElementById(key); if (el) el.value = guest[key]; }); document.getElementById('form-guest-id').value = guest.id; document.querySelectorAll('#multi-select-considerations-options input[type="checkbox"]').forEach(cb => { cb.checked = (guest.Considerations || []).includes(cb.value); }); document.querySelectorAll('#multi-select-depts-options input[type="checkbox"]').forEach(cb => { cb.checked = (guest.KeyDepartments || []).includes(cb.value); const noteInput = document.getElementById(`note-${cb.value.replace(/\s+/g, '-')}`); if (noteInput) { noteInput.classList.toggle('hidden', !cb.checked); if(cb.checked && guest.departmentNotes && guest.departmentNotes[cb.value]) { noteInput.value = guest.departmentNotes[cb.value]; } } }); updateConsiderationsText(); updateDeptsText();
+            } else { document.getElementById('form-title').textContent = 'Add New Guest'; document.getElementById('form-guest-id').value = ''; document.getElementById('ArrivalDate').value = getLocalDateString(new Date()); }
+            formView.style.display = 'block';
+        };
+
+        const initFirestore = () => { if (!db) { console.error("Firestore DB not initialized!"); return; } if (unsubscribe) unsubscribe(); const arrivalsCollectionRef = collection(db, 'artifacts/hotel-arrivals-pwa/public/data/arrivals'); unsubscribe = onSnapshot(query(arrivalsCollectionRef), (snapshot) => { currentData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, (error) => console.error("Error fetching arrivals:", error)); };
+        
+        const saveGuest = async (e) => {
+            e.preventDefault(); if (!auth.currentUser) { alert("Authentication error."); return; }
+            const id = document.getElementById('form-guest-id').value; const departmentNotes = {}; document.querySelectorAll('#multi-select-depts-options input[type="checkbox"]:checked').forEach(cb => { const noteInput = document.getElementById(`note-${cb.value.replace(/\s+/g, '-')}`); if (noteInput && noteInput.value.trim()) { departmentNotes[cb.value] = noteInput.value.trim(); } });
+            const guestData = { ArrivalDate: document.getElementById('ArrivalDate').value, DepartureDate: document.getElementById('DepartureDate').value, GuestName: document.getElementById('GuestName').value.trim(), Patronage: document.getElementById('Patronage').value, Considerations: Array.from(document.querySelectorAll('#multi-select-considerations-options input:checked')).map(el => el.value), NumberOfPax: parseInt(document.getElementById('NumberOfPax').value, 10), PurposeOfStay: document.getElementById('PurposeOfStay').value.trim(), RoomID: document.getElementById('RoomID').value.trim(), KeyDepartments: Array.from(document.querySelectorAll('#multi-select-depts-options input:checked')).map(el => el.value), Highlights: document.getElementById('Highlights').value.trim(), departmentNotes: departmentNotes, };
+            if (new Date(guestData.DepartureDate) < new Date(guestData.ArrivalDate)) { alert("Departure date cannot be before arrival date."); return; }
+            if (!guestData.GuestName || !guestData.ArrivalDate || !guestData.DepartureDate || isNaN(guestData.NumberOfPax) || guestData.NumberOfPax < 1) { alert("Please fill all required fields correctly."); return; }
+            try { const collectionRef = collection(db, 'artifacts/hotel-arrivals-pwa/public/data/arrivals'); if (id) { await updateDoc(doc(collectionRef, id), guestData); } else { guestData.TimestampCreated = new Date().toISOString(); guestData.status = 'Expected'; guestData.checkInTimestamp = null; await addDoc(collectionRef, guestData); } formView.style.display = 'none'; }
+            catch (error) { console.error("Error saving guest:", error); alert(`Failed to save record: ${error.message}`); }
+        };
+
+        const deleteGuestRecord = async (guestId) => {
+            if (!guestId) return;
+            try { await deleteDoc(doc(db, 'artifacts/hotel-arrivals-pwa/public/data/arrivals', guestId)); }
+            catch (error) { console.error("Error removing record:", error); alert("Failed to remove record."); }
+            finally { if (deleteModal.style.display === 'flex') { deleteModal.style.display = 'none'; recordToDelete = null; } }
+        };
+        
+        const updateGuestStatus = async (guestId, newStatus) => {
+            if (!guestId || !isAdmin) return;
+            try { const guestRef = doc(db, 'artifacts/hotel-arrivals-pwa/public/data/arrivals', guestId); const updateData = { status: newStatus }; const guest = currentData.find(g => g.id === guestId); if (newStatus === 'CheckedIn' && !guest.checkInTimestamp) { updateData.checkInTimestamp = new Date().toISOString(); } await updateDoc(guestRef, updateData); }
+            catch (error) { console.error(`Error updating status to ${newStatus}:`, error); alert(`Failed to update status: ${error.message}`); }
+        };
+
+        const setupEventListeners = () => {
+            const errorDiv = document.getElementById('login-error'); const filterButtons = document.querySelectorAll('.filter-btn'); const dateInput = document.getElementById('filter-date');
+            
+            async function handleLogin(role, buttonEl) {
+                const adminBtn = document.getElementById('admin-login-btn'); const viewerBtn = document.getElementById('viewer-login-btn');
+                const spinner = buttonEl.querySelector('svg'); const btnText = buttonEl.querySelector('.btn-text');
+                const originalText = btnText.textContent;
+
+                const resetButtons = () => {
+                    adminBtn.disabled = false; viewerBtn.disabled = false;
+                    adminBtn.querySelector('svg').classList.add('hidden');
+                    adminBtn.querySelector('.btn-text').textContent = 'Login as Admin';
+                    viewerBtn.querySelector('svg').classList.add('hidden');
+                    viewerBtn.querySelector('.btn-text').textContent = 'Login as Staff (View-Only)';
+                }
+
+                adminBtn.disabled = true; viewerBtn.disabled = true; spinner.classList.remove('hidden'); btnText.textContent = 'Logging in...';
+                try {
+                    localStorage.setItem('userRole', role); errorDiv.classList.add('hidden');
+                    if (!auth.currentUser) {
+                        await signInAnonymously(auth);
+                    } else {
+                         // This path is taken on logout -> login, so we update UI directly
+                        initFirestore();
+                        updateUIForRole(true, role === 'admin');
+                    }
+                } catch (error) {
+                    console.error(`${role} sign-in failed:`, error); errorDiv.textContent = `Login Failed: ${error.message}`; errorDiv.classList.remove('hidden'); localStorage.removeItem('userRole');
+                    resetButtons();
+                }
+            }
+            
+            // NEW: Added a function to reset login button state on logout
+            const resetLoginButtonState = () => {
+                const adminBtn = document.getElementById('admin-login-btn'); const viewerBtn = document.getElementById('viewer-login-btn');
+                adminBtn.disabled = false;
+                viewerBtn.disabled = false;
+                adminBtn.querySelector('.btn-text').textContent = 'Login as Admin';
+                adminBtn.querySelector('svg').classList.add('hidden');
+                viewerBtn.querySelector('.btn-text').textContent = 'Login as Staff (View-Only)';
+                viewerBtn.querySelector('svg').classList.add('hidden');
+            };
+
+            document.getElementById('admin-login-btn').addEventListener('click', (e) => { if (document.getElementById('login-email').value.toLowerCase() === ADMIN_EMAIL) { handleLogin('admin', e.currentTarget); } else { errorDiv.textContent = "Incorrect Admin Email."; errorDiv.classList.remove('hidden'); } });
+            document.getElementById('viewer-login-btn').addEventListener('click', (e) => handleLogin('viewer', e.currentTarget));
+            document.getElementById('logout-btn').addEventListener('click', async () => { if(auth.currentUser) { await signOut(auth); resetLoginButtonState(); } });
+            document.getElementById('add-new-btn').addEventListener('click', () => showForm());
+            document.getElementById('search-bar').addEventListener('input', render);
+            document.getElementById('guest-form').addEventListener('submit', saveGuest);
+            document.getElementById('cancel-form-btn').addEventListener('click', () => { formView.style.display = 'none'; });
+            document.getElementById('cancel-delete-btn').addEventListener('click', () => { deleteModal.style.display = 'none'; recordToDelete = null; });
+            document.getElementById('confirm-delete-btn').addEventListener('click', () => deleteGuestRecord(recordToDelete));
+            
+            listView.addEventListener('click', (e) => {
+                const target = e.target.closest('button'); if (!target) return; const guestId = target.dataset.id;
+                if (target.classList.contains('edit-btn')) { showForm(currentData.find(g => g.id === guestId)); }
+                if (target.classList.contains('delete-btn')) { recordToDelete = guestId; deleteModal.style.display = 'flex'; }
+                if (target.classList.contains('check-in-btn')) { updateGuestStatus(guestId, 'CheckedIn'); }
+                if (target.classList.contains('checkout-btn')) { deleteGuestRecord(guestId); }
+                if (target.classList.contains('mur-btn')) { updateGuestStatus(guestId, 'MUR'); }
+            });
+
+            filterButtons.forEach(button => { button.addEventListener('click', (e) => { filterButtons.forEach(b => b.classList.remove('active')); e.target.classList.add('active'); currentFilter = e.target.id.replace('filter-', ''); if (!dateInput.value) { dateInput.value = getLocalDateString(new Date()); } render(); }); });
+            dateInput.addEventListener('change', render);
+        };
+
+                const initApp = () => {
+            // --- ADD THIS BLOCK ---
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            }
+            // --- END OF BLOCK ---
+
+            try {
+                app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app);
+                // ... rest of the function
+                                onAuthStateChanged(auth, user => {
+                    if (user) { 
+                        const role = localStorage.getItem('userRole'); 
+                        initFirestore(); 
+                        updateUIForRole(true, role === 'admin'); 
+                        isInitialLoad = false; // <-- THE FIX: Tell the app the initial load is done.
+                    } else { 
+                        if(unsubscribe) unsubscribe(); 
+                        localStorage.removeItem('userRole'); 
+                        updateUIForRole(false, false); 
+                    } 
+                });
+                setupPWA(); setupEventListeners();
+            } catch (e) { console.error("Fatal: Application failed to initialize.", e); document.body.innerHTML = '<div class="text-red-500 text-center p-8">Application failed to load. Check console for details.</div>'; }
+        };
+        
+        initApp();
+    </script>
+</body>
+</html>
