@@ -1,11 +1,10 @@
 {
-  "name": "Guest Radar",
-  "short_name": "Radar",
+  "name": "VPH Guest Radar",
+  "short_name": "VPH Radar",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#E0E5EC",
   "theme_color": "#A5D6A7",
-  "description": "Hotel Operations Portal for View Park Hotel.",
   "icons": [
     {
       "src": "/images/icon-192.png",
